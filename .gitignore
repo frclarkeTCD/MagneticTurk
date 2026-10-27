@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Editors / OS
+.vscode/*
+!.vscode/settings.json
+.DS_Store
+
+# Secrets and machine-specific settings
+.env
+config/local*.yaml
+*.secret
+
+# Generated at runtime
+logs/
+calibration/output/
+datasets/
+
+# LaTeX build files
+docs/**/*.aux
+docs/**/*.log
+docs/**/*.out
+docs/**/*.toc
