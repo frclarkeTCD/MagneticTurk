@@ -52,6 +52,13 @@ python -m magneticturk.main --fake
 
 On the Raspberry Pi, see [`docs/pi-setup.md`](docs/pi-setup.md).
 
+## Project history
+
+MagneticTurk started as a self-playing magnetic chessboard: an electromagnet on a gantry under
+the board dragged the pieces, and 64 Hall sensors detected them. The custom PCB, schematic and
+manufacturing files are in [`legacy/v1-magnetic/`](legacy/v1-magnetic/).
+The project then moved to a camera-guided arm that lifts pieces from above.
+
 ## Status
 
 🚧 In development. See [Issues](../../issues) for the build plan.
