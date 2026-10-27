@@ -1,0 +1,17 @@
+# Board geometry, TO MEASURE on the real board.
+square_size_mm: 28
+board_size_mm: 224
+
+markers:
+  dictionary: DICT_4X4_50
+  size_mm: 15
+  # marker id -> centre position in board frame (mm), origin at a1 corner
+  positions: {}
+
+capture_tray:
+  position_mm: [0, 0]     # board frame
+  slots: 16
+
+board_reading:
+  max_views: 4
+  decision_ratio: 20       # best hypothesis must be this many times likelier than the runner-up

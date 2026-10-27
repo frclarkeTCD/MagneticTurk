@@ -1,0 +1,46 @@
+# Arm configuration. ALL values are placeholders until measured.
+# Do not change limits or speeds without checking on the real arm.
+
+servo_channels:        # PCA9685 channel for each joint
+  base: 0
+  shoulder: 1
+  elbow: 2
+  wrist_pitch: 3
+  wrist_roll: 4
+  gripper: 5
+
+pulse_us:              # servo pulse range (check servo datasheet)
+  min: 500
+  max: 2500
+
+joint_limits_deg:      # software limits, TO MEASURE
+  base:        [0, 180]
+  shoulder:    [20, 160]
+  elbow:       [20, 160]
+  wrist_pitch: [0, 180]
+  wrist_roll:  [0, 180]
+  gripper:     [10, 90]
+
+home_pose_deg:         # safe upright pose, TO MEASURE
+  base: 90
+  shoulder: 90
+  elbow: 90
+  wrist_pitch: 90
+  wrist_roll: 90
+  gripper: 30
+
+max_speed_deg_s: 60
+link_lengths_mm:       # for kinematics, TO MEASURE
+  base_height: 0
+  upper_arm: 0
+  forearm: 0
+  wrist_to_tool: 0
+
+gripper:
+  open_deg: 30
+  closed_deg: 70
+  grip_height_above_board_mm: 45   # grip pieces near the top
+
+grasp_align:
+  tolerance_mm: 2.0
+  max_corrections: 3

@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "magneticturk"
+version = "0.1.0"
+description = "Vision-guided chess-playing robotic arm"
+authors = [{ name = "Frank Clarke" }]
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "python-chess",
+    "pyyaml",
+    "fastapi",
+    "uvicorn",
+]
+
+[project.optional-dependencies]
+# On the laptop. On the Pi, install OpenCV and Picamera2 with apt instead (see docs/pi-setup.md).
+vision = ["opencv-contrib-python"]
+pi = ["adafruit-circuitpython-pca9685"]
+dev = ["pytest", "ruff", "opencv-contrib-python"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

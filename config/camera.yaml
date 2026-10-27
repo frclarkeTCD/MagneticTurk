@@ -1,0 +1,4 @@
+resolution: [1280, 960]
+alignment_resolution: [640, 480]
+autofocus: true
+# Camera intrinsics and hand-eye calibration are generated into calibration/output/
