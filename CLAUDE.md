@@ -47,7 +47,7 @@ Calibration, Ready, PlayerTurn, RobotTurn, Paused, Fault, GameOver.
 - Servos are powered from a separate 6 V supply, never the Pi.
 
 ## Build order (update the ✅ as stages complete)
-1. ⬜ Skeleton, config, fake camera/servos, CI
+1. ✅ Skeleton, config, fake camera/servos, CI
 2. ⬜ game/: game state, Stockfish wrapper, clock
 3. ⬜ vision/move_inference.py: hypothesis matching on synthetic probabilities
 4. ⬜ vision/markers.py + occupancy.py on real phone photos of the board
@@ -58,4 +58,4 @@ Calibration, Ready, PlayerTurn, RobotTurn, Paused, Fault, GameOver.
 9. ⬜ vision/grasp_align.py on the real wrist camera
 10. ⬜ supervisor.py + full integration + special moves
 
-Current stage: **1**
+Current stage: **2**

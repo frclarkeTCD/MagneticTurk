@@ -9,9 +9,13 @@ servo_channels:        # PCA9685 channel for each joint
   wrist_roll: 4
   gripper: 5
 
+i2c_address: 0x40      # PCA9685 default address
+pwm_frequency_hz: 50   # standard hobby-servo frame rate
+
 pulse_us:              # servo pulse range (check servo datasheet)
   min: 500
   max: 2500
+servo_travel_deg: 180  # angle reached at pulse_us.max (0 deg at pulse_us.min), check datasheet
 
 joint_limits_deg:      # software limits, TO MEASURE
   base:        [0, 180]
