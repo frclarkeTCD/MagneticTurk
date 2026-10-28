@@ -1,0 +1,16 @@
+# Game defaults. Difficulty, time control and colour can be changed on the companion
+# display before each game; these are the starting values.
+
+robot_color: black
+
+engine:
+  path: stockfish            # program name or full path
+  extra_search_dirs: [/usr/games]   # where apt installs it on Raspberry Pi OS
+  threads: 1                 # leave the other cores free for vision
+  hash_mb: 16                # Pi Zero 2 W has only 512 MB RAM
+  skill_level: 5             # Stockfish 0 (beginner, makes mistakes) to 20 (full strength)
+  think_time_s: 1.0
+
+clock:
+  base_s: 600                # 10 minutes each; null for an untimed game
+  increment_s: 5             # added after each move

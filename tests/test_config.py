@@ -1,6 +1,7 @@
 import shutil
 from pathlib import Path
 
+import chess
 import pytest
 import yaml
 
@@ -108,4 +109,32 @@ def test_marker_positions(config_dir: Path):
 def test_camera_resolution_must_be_positive(config_dir: Path):
     edit_yaml(config_dir / "camera.yaml", lambda d: d.update(resolution=[0, 960]))
     with pytest.raises(ConfigError, match="resolution must be positive"):
+        load_config(config_dir)
+
+
+def test_game_config():
+    game = load_config().game
+    assert game.robot_color == chess.BLACK
+    assert game.engine.threads == 1
+    assert game.clock.base_s == 600
+
+
+def test_untimed_clock(config_dir: Path):
+    edit_yaml(config_dir / "game.yaml", lambda d: d["clock"].update(base_s=None))
+    assert load_config(config_dir).game.clock.base_s is None
+
+
+@pytest.mark.parametrize(
+    ("edit", "message"),
+    [
+        (lambda d: d.update(robot_color="red"), "robot_color"),
+        (lambda d: d["engine"].update(think_time_s=0), "think_time_s"),
+        (lambda d: d["engine"].update(threads=0), "threads"),
+        (lambda d: d["clock"].update(base_s=0), "base_s"),
+        (lambda d: d["clock"].update(increment_s=-1), "increment_s"),
+    ],
+)
+def test_game_validation(config_dir: Path, edit, message):
+    edit_yaml(config_dir / "game.yaml", edit)
+    with pytest.raises(ConfigError, match=message):
         load_config(config_dir)

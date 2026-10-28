@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import chess
 import yaml
 
 DEFAULT_CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
@@ -90,10 +91,34 @@ class BoardConfig:
 
 
 @dataclass(frozen=True)
+class EngineConfig:
+    path: str
+    extra_search_dirs: tuple[str, ...]
+    threads: int
+    hash_mb: int
+    skill_level: int
+    think_time_s: float
+
+
+@dataclass(frozen=True)
+class ClockConfig:
+    base_s: float | None  # None = untimed
+    increment_s: float
+
+
+@dataclass(frozen=True)
+class GameConfig:
+    robot_color: chess.Color
+    engine: EngineConfig
+    clock: ClockConfig
+
+
+@dataclass(frozen=True)
 class Config:
     robot: RobotConfig
     camera: CameraConfig
     board: BoardConfig
+    game: GameConfig
 
 
 def load_config(config_dir: Path | str = DEFAULT_CONFIG_DIR) -> Config:
@@ -102,6 +127,7 @@ def load_config(config_dir: Path | str = DEFAULT_CONFIG_DIR) -> Config:
         robot=load_robot_config(config_dir / "robot.yaml"),
         camera=load_camera_config(config_dir / "camera.yaml"),
         board=load_board_config(config_dir / "board.yaml"),
+        game=load_game_config(config_dir / "game.yaml"),
     )
 
 
@@ -184,6 +210,35 @@ def load_board_config(path: Path | str) -> BoardConfig:
     return board
 
 
+def load_game_config(path: Path | str) -> GameConfig:
+    path = Path(path)
+    raw = _read_yaml(path)
+    colors = {"white": chess.WHITE, "black": chess.BLACK}
+    if raw.get("robot_color") not in colors:
+        raise ConfigError(f"{path}: robot_color must be white or black")
+    try:
+        base_s = raw["clock"]["base_s"]
+        game = GameConfig(
+            robot_color=colors[raw["robot_color"]],
+            engine=EngineConfig(
+                path=str(raw["engine"]["path"]),
+                extra_search_dirs=tuple(str(d) for d in raw["engine"]["extra_search_dirs"] or ()),
+                threads=int(raw["engine"]["threads"]),
+                hash_mb=int(raw["engine"]["hash_mb"]),
+                skill_level=int(raw["engine"]["skill_level"]),
+                think_time_s=float(raw["engine"]["think_time_s"]),
+            ),
+            clock=ClockConfig(
+                base_s=None if base_s is None else float(base_s),
+                increment_s=float(raw["clock"]["increment_s"]),
+            ),
+        )
+    except (KeyError, TypeError, ValueError) as e:
+        raise ConfigError(f"{path}: missing or malformed value ({e!r})") from e
+    _validate_game(game, path)
+    return game
+
+
 def _read_yaml(path: Path) -> dict[str, Any]:
     try:
         raw = yaml.safe_load(path.read_text())
@@ -255,3 +310,16 @@ def _validate_board(board: BoardConfig, path: Path) -> None:
         raise ConfigError(f"{path}: board_reading.max_views must be at least 1")
     if board.board_reading.decision_ratio <= 1:
         raise ConfigError(f"{path}: board_reading.decision_ratio must be greater than 1")
+
+
+def _validate_game(game: GameConfig, path: Path) -> None:
+    engine = game.engine
+    if engine.threads < 1 or engine.hash_mb < 1:
+        raise ConfigError(f"{path}: engine.threads and engine.hash_mb must be at least 1")
+    if engine.think_time_s <= 0:
+        raise ConfigError(f"{path}: engine.think_time_s must be positive")
+    # The skill level's valid range comes from the engine itself, checked when it starts.
+    if game.clock.base_s is not None and game.clock.base_s <= 0:
+        raise ConfigError(f"{path}: clock.base_s must be positive, or null for untimed")
+    if game.clock.increment_s < 0:
+        raise ConfigError(f"{path}: clock.increment_s cannot be negative")
