@@ -79,6 +79,8 @@ class CaptureTrayConfig:
 class BoardReadingConfig:
     max_views: int
     decision_ratio: float
+    contradiction_log_odds: float
+    min_square_entropy_bits: float
 
 
 @dataclass(frozen=True)
@@ -202,6 +204,8 @@ def load_board_config(path: Path | str) -> BoardConfig:
             board_reading=BoardReadingConfig(
                 max_views=int(raw["board_reading"]["max_views"]),
                 decision_ratio=float(raw["board_reading"]["decision_ratio"]),
+                contradiction_log_odds=float(raw["board_reading"]["contradiction_log_odds"]),
+                min_square_entropy_bits=float(raw["board_reading"]["min_square_entropy_bits"]),
             ),
         )
     except (KeyError, TypeError, ValueError) as e:
@@ -310,6 +314,10 @@ def _validate_board(board: BoardConfig, path: Path) -> None:
         raise ConfigError(f"{path}: board_reading.max_views must be at least 1")
     if board.board_reading.decision_ratio <= 1:
         raise ConfigError(f"{path}: board_reading.decision_ratio must be greater than 1")
+    if board.board_reading.contradiction_log_odds <= 0:
+        raise ConfigError(f"{path}: board_reading.contradiction_log_odds must be positive")
+    if not 0 <= board.board_reading.min_square_entropy_bits < 1:
+        raise ConfigError(f"{path}: board_reading.min_square_entropy_bits must be in [0, 1)")
 
 
 def _validate_game(game: GameConfig, path: Path) -> None:

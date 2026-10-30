@@ -15,3 +15,5 @@ capture_tray:
 board_reading:
   max_views: 4
   decision_ratio: 20       # best hypothesis must be this many times likelier than the runner-up
+  contradiction_log_odds: 3.0   # evidence this strong (p ~ 0.95) against the best move = no legal move fits
+  min_square_entropy_bits: 0.05 # squares less uncertain than this are not worth looking at again

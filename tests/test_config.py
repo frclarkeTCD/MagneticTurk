@@ -138,3 +138,16 @@ def test_game_validation(config_dir: Path, edit, message):
     edit_yaml(config_dir / "game.yaml", edit)
     with pytest.raises(ConfigError, match=message):
         load_config(config_dir)
+
+
+@pytest.mark.parametrize(
+    ("edit", "message"),
+    [
+        (lambda d: d["board_reading"].update(contradiction_log_odds=0), "contradiction_log_odds"),
+        (lambda d: d["board_reading"].update(min_square_entropy_bits=1), "min_square_entropy"),
+    ],
+)
+def test_board_reading_validation(config_dir: Path, edit, message):
+    edit_yaml(config_dir / "board.yaml", edit)
+    with pytest.raises(ConfigError, match=message):
+        load_config(config_dir)
