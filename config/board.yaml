@@ -17,3 +17,13 @@ board_reading:
   decision_ratio: 20       # best hypothesis must be this many times likelier than the runner-up
   contradiction_log_odds: 3.0   # evidence this strong (p ~ 0.95) against the best move = no legal move fits
   min_square_entropy_bits: 0.05 # squares less uncertain than this are not worth looking at again
+
+pieces:                    # TO MEASURE on the real set; used to predict what hides what
+  base_radius_mm: 10
+  heights_mm:
+    pawn: 35
+    knight: 45
+    bishop: 48
+    rook: 38
+    queen: 55
+    king: 60

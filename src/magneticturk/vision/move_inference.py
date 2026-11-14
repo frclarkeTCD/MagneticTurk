@@ -66,6 +66,7 @@ class InferenceResult:
     ranked: tuple[Hypothesis, ...]  # best first
     log_ratio: float  # log(likelihood of best / runner-up); inf if there is only one
     informative_squares: tuple[chess.Square, ...]  # most useful to look at first
+    square_entropy_bits: np.ndarray  # (64,) how much a clear look at each square would tell
     contradicted_squares: tuple[chess.Square, ...]  # evidence strongly disagrees with best
 
     @property
@@ -119,9 +120,9 @@ def infer_move(
     best = ranked[0]
     strong = np.abs(log_odds) >= config.contradiction_log_odds
     contradicted = np.flatnonzero(strong & ((log_odds > 0) != best.occupancy))
-    informative = _informative_squares(
-        predicted[order], log_likelihoods[order], config.min_square_entropy_bits
-    )
+    entropy = _square_entropy_bits(predicted, log_likelihoods)
+    informative = np.flatnonzero(entropy >= config.min_square_entropy_bits)
+    informative = informative[np.argsort(-entropy[informative], kind="stable")]
 
     if contradicted.size:
         status = Status.NO_FIT
@@ -134,6 +135,7 @@ def infer_move(
         ranked=ranked,
         log_ratio=float(log_ratio),
         informative_squares=tuple(int(s) for s in informative),
+        square_entropy_bits=entropy,
         contradicted_squares=tuple(int(s) for s in contradicted),
     )
 
@@ -147,10 +149,8 @@ def should_ask_player(
     return result.status is Status.NEED_MORE_VIEWS and views_taken >= config.max_views
 
 
-def _informative_squares(
-    predicted: np.ndarray, log_likelihoods: np.ndarray, min_entropy_bits: float
-) -> np.ndarray:
-    """Squares whose occupancy the likely hypotheses disagree on, most uncertain first.
+def _square_entropy_bits(predicted: np.ndarray, log_likelihoods: np.ndarray) -> np.ndarray:
+    """How much the likely hypotheses disagree about each square, in bits.
 
     Weights each hypothesis by its posterior probability, then scores each square by the
     entropy of its predicted occupancy: the information a clear look at it would give.
@@ -158,6 +158,4 @@ def _informative_squares(
     weights = np.exp(log_likelihoods - log_likelihoods.max())
     weights /= weights.sum()
     p = np.clip(weights @ predicted, _EPS, 1 - _EPS)  # P(occupied) under the mixture
-    entropy = -(p * np.log2(p) + (1 - p) * np.log2(1 - p))
-    squares = np.flatnonzero(entropy >= min_entropy_bits)
-    return squares[np.argsort(-entropy[squares], kind="stable")]
+    return -(p * np.log2(p) + (1 - p) * np.log2(1 - p))

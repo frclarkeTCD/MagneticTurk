@@ -60,6 +60,7 @@ class CameraConfig:
     resolution: tuple[int, int]
     alignment_resolution: tuple[int, int]
     autofocus: bool
+    nominal_hfov_deg: float
 
 
 @dataclass(frozen=True)
@@ -84,12 +85,19 @@ class BoardReadingConfig:
 
 
 @dataclass(frozen=True)
+class PieceConfig:
+    base_radius_mm: float
+    heights_mm: dict[chess.PieceType, float]
+
+
+@dataclass(frozen=True)
 class BoardConfig:
     square_size_mm: float
     board_size_mm: float
     markers: MarkerConfig
     capture_tray: CaptureTrayConfig
     board_reading: BoardReadingConfig
+    pieces: PieceConfig
 
 
 @dataclass(frozen=True)
@@ -116,11 +124,53 @@ class GameConfig:
 
 
 @dataclass(frozen=True)
+class FusionConfig:
+    max_view_log_odds: float
+
+
+@dataclass(frozen=True)
+class ViewQualityConfig:
+    look_height_mm: float
+    min_elevation_deg: float
+    full_quality_square_px: float
+    image_margin_px: float
+    occluded_quality: float
+
+
+@dataclass(frozen=True)
+class ViewPlannerConfig:
+    first_view_eye_mm: tuple[float, float, float]
+    first_view_target_mm: tuple[float, float, float]
+    candidate_heights_mm: tuple[float, ...]
+    candidate_spacing_mm: float
+    candidate_margin_mm: float
+    min_view_separation_mm: float
+    travel_cost_per_mm: float
+
+
+@dataclass(frozen=True)
+class SimulationConfig:
+    signal_log_odds: float
+    noise_log_odds: float
+    occluded_bias_log_odds: float
+    repeat_correlation: float
+
+
+@dataclass(frozen=True)
+class VisionConfig:
+    fusion: FusionConfig
+    view_quality: ViewQualityConfig
+    view_planner: ViewPlannerConfig
+    simulation: SimulationConfig
+
+
+@dataclass(frozen=True)
 class Config:
     robot: RobotConfig
     camera: CameraConfig
     board: BoardConfig
     game: GameConfig
+    vision: VisionConfig
 
 
 def load_config(config_dir: Path | str = DEFAULT_CONFIG_DIR) -> Config:
@@ -130,6 +180,7 @@ def load_config(config_dir: Path | str = DEFAULT_CONFIG_DIR) -> Config:
         camera=load_camera_config(config_dir / "camera.yaml"),
         board=load_board_config(config_dir / "board.yaml"),
         game=load_game_config(config_dir / "game.yaml"),
+        vision=load_vision_config(config_dir / "vision.yaml"),
     )
 
 
@@ -174,12 +225,15 @@ def load_camera_config(path: Path | str) -> CameraConfig:
             resolution=_int_pair(raw["resolution"]),
             alignment_resolution=_int_pair(raw["alignment_resolution"]),
             autofocus=bool(raw["autofocus"]),
+            nominal_hfov_deg=float(raw["nominal_hfov_deg"]),
         )
     except (KeyError, TypeError, ValueError) as e:
         raise ConfigError(f"{path}: missing or malformed value ({e!r})") from e
     for name in ("resolution", "alignment_resolution"):
         if min(getattr(camera, name)) <= 0:
             raise ConfigError(f"{path}: {name} must be positive, got {getattr(camera, name)}")
+    if not 0 < camera.nominal_hfov_deg < 180:
+        raise ConfigError(f"{path}: nominal_hfov_deg must be between 0 and 180")
     return camera
 
 
@@ -206,6 +260,13 @@ def load_board_config(path: Path | str) -> BoardConfig:
                 decision_ratio=float(raw["board_reading"]["decision_ratio"]),
                 contradiction_log_odds=float(raw["board_reading"]["contradiction_log_odds"]),
                 min_square_entropy_bits=float(raw["board_reading"]["min_square_entropy_bits"]),
+            ),
+            pieces=PieceConfig(
+                base_radius_mm=float(raw["pieces"]["base_radius_mm"]),
+                heights_mm={
+                    chess.PIECE_NAMES.index(name): float(h)
+                    for name, h in raw["pieces"]["heights_mm"].items()
+                },
             ),
         )
     except (KeyError, TypeError, ValueError) as e:
@@ -243,6 +304,43 @@ def load_game_config(path: Path | str) -> GameConfig:
     return game
 
 
+def load_vision_config(path: Path | str) -> VisionConfig:
+    path = Path(path)
+    raw = _read_yaml(path)
+    try:
+        quality = raw["view_quality"]
+        planner = raw["view_planner"]
+        vision = VisionConfig(
+            fusion=FusionConfig(max_view_log_odds=float(raw["fusion"]["max_view_log_odds"])),
+            view_quality=ViewQualityConfig(
+                look_height_mm=float(quality["look_height_mm"]),
+                min_elevation_deg=float(quality["min_elevation_deg"]),
+                full_quality_square_px=float(quality["full_quality_square_px"]),
+                image_margin_px=float(quality["image_margin_px"]),
+                occluded_quality=float(quality["occluded_quality"]),
+            ),
+            view_planner=ViewPlannerConfig(
+                first_view_eye_mm=_float_triple(planner["first_view"]["eye_mm"]),
+                first_view_target_mm=_float_triple(planner["first_view"]["target_mm"]),
+                candidate_heights_mm=tuple(float(h) for h in planner["candidate_heights_mm"]),
+                candidate_spacing_mm=float(planner["candidate_spacing_mm"]),
+                candidate_margin_mm=float(planner["candidate_margin_mm"]),
+                min_view_separation_mm=float(planner["min_view_separation_mm"]),
+                travel_cost_per_mm=float(planner["travel_cost_per_mm"]),
+            ),
+            simulation=SimulationConfig(
+                signal_log_odds=float(raw["simulation"]["signal_log_odds"]),
+                noise_log_odds=float(raw["simulation"]["noise_log_odds"]),
+                occluded_bias_log_odds=float(raw["simulation"]["occluded_bias_log_odds"]),
+                repeat_correlation=float(raw["simulation"]["repeat_correlation"]),
+            ),
+        )
+    except (KeyError, TypeError, ValueError) as e:
+        raise ConfigError(f"{path}: missing or malformed value ({e!r})") from e
+    _validate_vision(vision, path)
+    return vision
+
+
 def _read_yaml(path: Path) -> dict[str, Any]:
     try:
         raw = yaml.safe_load(path.read_text())
@@ -263,6 +361,11 @@ def _int_pair(value: Any) -> tuple[int, int]:
 def _float_pair(value: Any) -> tuple[float, float]:
     a, b = value
     return float(a), float(b)
+
+
+def _float_triple(value: Any) -> tuple[float, float, float]:
+    a, b, c = value
+    return float(a), float(b), float(c)
 
 
 def _validate_robot(robot: RobotConfig, path: Path) -> None:
@@ -318,6 +421,10 @@ def _validate_board(board: BoardConfig, path: Path) -> None:
         raise ConfigError(f"{path}: board_reading.contradiction_log_odds must be positive")
     if not 0 <= board.board_reading.min_square_entropy_bits < 1:
         raise ConfigError(f"{path}: board_reading.min_square_entropy_bits must be in [0, 1)")
+    if set(board.pieces.heights_mm) != set(chess.PIECE_TYPES):
+        raise ConfigError(f"{path}: pieces.heights_mm needs exactly {chess.PIECE_NAMES[1:]}")
+    if board.pieces.base_radius_mm <= 0 or min(board.pieces.heights_mm.values()) <= 0:
+        raise ConfigError(f"{path}: piece sizes must be positive")
 
 
 def _validate_game(game: GameConfig, path: Path) -> None:
@@ -331,3 +438,29 @@ def _validate_game(game: GameConfig, path: Path) -> None:
         raise ConfigError(f"{path}: clock.base_s must be positive, or null for untimed")
     if game.clock.increment_s < 0:
         raise ConfigError(f"{path}: clock.increment_s cannot be negative")
+
+
+def _validate_vision(vision: VisionConfig, path: Path) -> None:
+    if vision.fusion.max_view_log_odds <= 0:
+        raise ConfigError(f"{path}: fusion.max_view_log_odds must be positive")
+    quality = vision.view_quality
+    if not 0 <= quality.min_elevation_deg < 90:
+        raise ConfigError(f"{path}: view_quality.min_elevation_deg must be in [0, 90)")
+    if quality.full_quality_square_px <= 0 or quality.image_margin_px < 0:
+        raise ConfigError(f"{path}: view_quality pixel sizes must be positive")
+    if not 0 <= quality.occluded_quality <= 1:
+        raise ConfigError(f"{path}: view_quality.occluded_quality must be in [0, 1]")
+    planner = vision.view_planner
+    if planner.first_view_eye_mm[2] <= planner.first_view_target_mm[2]:
+        raise ConfigError(f"{path}: view_planner.first_view eye must be above its target")
+    if not planner.candidate_heights_mm or min(planner.candidate_heights_mm) <= 0:
+        raise ConfigError(f"{path}: view_planner.candidate_heights_mm must be positive")
+    if planner.candidate_spacing_mm <= 0:
+        raise ConfigError(f"{path}: view_planner.candidate_spacing_mm must be positive")
+    for name in ("candidate_margin_mm", "min_view_separation_mm", "travel_cost_per_mm"):
+        if getattr(planner, name) < 0:
+            raise ConfigError(f"{path}: view_planner.{name} cannot be negative")
+    if vision.simulation.noise_log_odds < 0:
+        raise ConfigError(f"{path}: simulation.noise_log_odds cannot be negative")
+    if not 0 <= vision.simulation.repeat_correlation <= 1:
+        raise ConfigError(f"{path}: simulation.repeat_correlation must be in [0, 1]")

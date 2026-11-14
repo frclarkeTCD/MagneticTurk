@@ -1,0 +1,30 @@
+# Active board reading: how views are weighted, combined and chosen.
+
+fusion:
+  max_view_log_odds: 4.0       # cap on one view's evidence per square (p ~ 0.98), so one
+                               # overconfident view can never outvote several others
+
+view_quality:
+  look_height_mm: 15           # height above the board of the point checked on each square
+                               # (about the middle of a pawn)
+  min_elevation_deg: 25        # views flatter than this see nothing useful
+  full_quality_square_px: 40   # a square this many pixels wide or more is seen at full quality
+  image_margin_px: 20          # squares this close to the image edge count as not in view
+  occluded_quality: 0.1        # weight for a square that may be hidden behind a taller piece
+
+view_planner:
+  first_view:                  # where the camera looks first each turn (board frame, mm)
+    eye_mm: [112, 112, 350]
+    target_mm: [112, 112, 0]
+  candidate_heights_mm: [200, 300]
+  candidate_spacing_mm: 50     # grid spacing of candidate camera positions
+  candidate_margin_mm: 100     # how far beyond the board edge candidates extend
+  min_view_separation_mm: 40   # don't revisit a position this close to an earlier view
+  travel_cost_per_mm: 0.0005   # score penalty per mm of camera travel (prefers short moves)
+
+simulation:                    # simulated views for tests and --fake runs (not used on the robot)
+  signal_log_odds: 2.5         # a clear, full-quality view of one square
+  noise_log_odds: 1.5          # standard deviation of the per-square noise
+  occluded_bias_log_odds: 1.5  # how occupied a square hidden behind a taller piece looks
+  repeat_correlation: 0.7      # share of a view's noise that comes back from the same spot
+                               # (glare, shadows), so repeating a view adds little

@@ -2,3 +2,6 @@ resolution: [1280, 960]
 alignment_resolution: [640, 480]
 autofocus: true
 # Camera intrinsics and hand-eye calibration are generated into calibration/output/
+
+# Nominal lens, used for view planning until calibration measures the real intrinsics.
+nominal_hfov_deg: 66       # Camera Module 3 (standard lens) horizontal field of view
